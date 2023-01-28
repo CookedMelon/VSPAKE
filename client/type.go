@@ -1,28 +1,22 @@
 package client
 
 import (
-	"math/big"
-	"packages/elliptic"
+	"VSPAKE/packages/elliptic"
 )
 
-type CiphSel struct {
-	// contains filtered or unexported fields
-	P, Q *elliptic.CurvePoint //P,Q为椭圆曲线上的点
-	p    *big.Int             //p为素数
-
-}
 type Client struct {
 	// contains filtered or unexported fields
 	//public
-	G                    *CiphSel
-	nc, ns, sname, cname []byte
+	G                    *elliptic.CurveDetail
+	NC, NS, Sname, Cname []byte
 	//private
-	key             []byte   //短密码
-	x               *big.Int //随机数
-	X, Y, R, K      *elliptic.CurvePoint
-	sessionKey      []byte
-	PreMasterSecret []byte
-	AKey            []byte
+	key                           []byte //短密码
+	x                             []byte //随机数
+	pX, pY, pR, pK                *elliptic.CurvePoint
+	sessionKey                    []byte
+	preMasterSecret, masterSecret []byte
+	aKey, skey                    []byte
+	kdf1, kdf2                    []byte
 }
 type HelloMessage struct {
 	nc, name []byte
