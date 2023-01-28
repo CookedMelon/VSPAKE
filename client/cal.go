@@ -1,56 +1,63 @@
 package client
 
 import (
-	"VSPAKE/server"
+	"VSPAKE/common"
+	"VSPAKE/packages/elliptic"
 	"crypto/md5"
 	"crypto/rand"
-	"encoding/json"
-	"errors"
+	"fmt"
+	"math/big"
 	"unsafe"
 )
 
-func GetClientHelloMessage(client *Client) *HelloMessage {
-	hm := &HelloMessage{}
-	hm.nc = client.NC
-	hm.name = client.Cname
+func InitClient(passwd, cname string) *Client {
+	G := new(elliptic.CurveDetail)
+	G.Init()
+	fmt.Println("G:", G)
+	nc := make([]byte, 32)
+	key := make([]byte, 32)
+	Cname := make([]byte, 32)
+	copy(key, passwd)
+	copy(Cname, cname)
+	rand.Read(nc)
+	return &Client{G: G, key: key, Cname: Cname, NC: nc}
+}
+func (client *Client) GetClientHelloMessage() *common.ClientHelloMessage {
+	hm := &common.ClientHelloMessage{}
+	copy(hm.NC[:], client.NC)
+	copy(hm.Name[:], client.Cname)
 	return hm
 }
-func InitClient(key, cname []byte) *Client {
-	nc := make([]byte, 32)
-	rand.Read(nc)
-	return &Client{key: key, Cname: cname, NC: nc}
-}
-
-func (client *Client) ClientHello() {
-	message := GetClientHelloMessage(client)
-	Send(*(*[]byte)(unsafe.Pointer(message)))
+func (client *Client) ClientHello() []byte {
+	message := client.GetClientHelloMessage()
+	fmt.Println("client hello message", message)
+	return common.Sendc(message)
 }
 func (client *Client) RecvHelloMessage(mess []byte) {
 	client.NC = mess
 }
-func (client *Client) Update(climsg []byte) error {
-	kec := server.KeyExchangeMsg{}
-	err := json.Unmarshal(climsg, &kec)
-	if err != nil {
-		return errors.New("json unmarshal error in client update/1")
-	}
-	err = json.Unmarshal(kec.Rbyte, client.pR)
-	if err != nil {
-		return errors.New("json unmarshal error in client update/2")
-	}
-	err = json.Unmarshal(kec.Ybyte, client.pY)
-	if err != nil {
-		return errors.New("json unmarshal error in client update/3")
-	}
-	hasher := md5.New()
-	hasher.Write(client.Cname)
-	hasher.Write(client.Sname)
-	hasher.Write(client.key)
-	H0 := hasher.Sum(nil)
+func (client *Client) Update(sermsg []byte) error {
+	kec := common.ServerKeyExchangeMsg{}
+	copy(kec.NS[:], sermsg[:32])
+	copy(kec.Sname[:], sermsg[32:64])
+	copy(kec.Rbyte[:], sermsg[64:128])
+	copy(kec.Ybyte[:], sermsg[128:192])
+	client.NS = kec.NS[:]
+	client.Sname = kec.Sname[:]
+	client.pR = new(elliptic.CurvePoint)
+	client.pY = new(elliptic.CurvePoint)
+	client.pR.X = new(big.Int).SetBytes(kec.Rbyte[:28])
+	client.pR.Y = new(big.Int).SetBytes(kec.Rbyte[32 : 32+28])
+	fmt.Println("pR.X:", client.pR.X)
+	fmt.Println("pR.Y:", client.pR.Y)
+	client.pY.X = new(big.Int).SetBytes(kec.Ybyte[:28])
+	fmt.Println("pY.X:", client.pY.X)
+	client.pY.Y = new(big.Int).SetBytes(kec.Ybyte[32 : 32+28])
+	client.hkey = common.GetHashKey(client.Cname, client.Sname, client.key)
 	client.x = make([]byte, 32)
 	rand.Read(client.x)
 	temp1 := client.G.Mult(client.G.P, client.x)
-	temp2 := client.G.Mult(client.pR, H0)
+	temp2 := client.G.Mult(client.pR, client.hkey)
 	client.pX = client.G.Add(temp1, temp2)
 	client.pK = client.G.Mult(client.pY, client.x)
 
@@ -97,7 +104,7 @@ func (client *Client) AuthenticateKDF1(recvkdf []byte) {
 }
 
 func (client *Client) SendKDF2(recvkdf []byte) {
-	Send(client.kdf2)
+	common.Send(client.kdf2)
 }
 func (client *Client) GetMaeterSecret() {
 	hasher := md5.New()
@@ -114,7 +121,4 @@ func (client *Client) GetSessionKey() {
 	hasher.Write(client.NC)
 	hasher.Write(client.NS)
 	client.sessionKey = hasher.Sum(nil)
-}
-func Send(b []byte) []byte {
-	return b
 }
