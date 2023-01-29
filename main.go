@@ -37,5 +37,35 @@ func main() {
 	server.PrintpK()
 	client.PrintpK()
 	fmt.Println("K eqal?", check.CheckK(server, client))
+	client.GetAuthentKeys()
+	server.GetAuthentKeys()
+	fmt.Println("PreMasterSecret eqal?", check.CheckPreMasterSecret(server, client))
+	fmt.Println("akey eqal?", check.Checkakey(server, client))
 
+	//explicit mutual aythentication
+	client.GetKDFs()
+	server.GetKDFs()
+	recvthing = server.SendKDF1()
+	ans := client.AuthenticateKDF1(recvthing)
+	if ans {
+		fmt.Println("KDF1 pass")
+	} else {
+		fmt.Println("KDF1 fail")
+		return
+	}
+	recvthing = client.SendKDF2()
+	ans = server.AuthenticateKDF2(recvthing)
+	if ans {
+		fmt.Println("KDF2 pass")
+	} else {
+		fmt.Println("KDF2 fail")
+		return
+	}
+
+	//Compute master secret and session key
+	client.GetMasterSecretAndKey()
+	server.GetMasterSecretAndKey()
+	fmt.Println("MasterSecret eqal?", check.CheckMasterSecret(server, client))
+	fmt.Println("SessionKey eqal?", check.CheckSessionKey(server, client))
+	//send and recv message
 }

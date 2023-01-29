@@ -3,11 +3,10 @@ package client
 import (
 	"VSPAKE/common"
 	"VSPAKE/packages/elliptic"
-	"crypto/md5"
 	"crypto/rand"
+	"crypto/sha256"
 	"fmt"
 	"math/big"
-	"unsafe"
 )
 
 func InitClient(passwd, cname []byte) (error, *Client) {
@@ -74,15 +73,35 @@ func (client *Client) getkeyexc() *common.ClientKeyExchangeMsg {
 	return &kec
 }
 func (client *Client) GetAuthentKeys() {
-	hasher := md5.New()
+	hasher := sha256.New()
 	hasher.Write(client.Cname)
 	hasher.Write(client.Sname)
 	hasher.Write(client.NC)
 	hasher.Write(client.NS)
-	hasher.Write(*(*[]byte)(unsafe.Pointer(client.pX)))
-	hasher.Write(*(*[]byte)(unsafe.Pointer(client.pR)))
-	hasher.Write(*(*[]byte)(unsafe.Pointer(client.pY)))
-	hasher.Write(*(*[]byte)(unsafe.Pointer(client.pK)))
+	hasher.Write(client.pX.X.Bytes())
+	hasher.Write(client.pX.Y.Bytes())
+	hasher.Write(client.pR.X.Bytes())
+	hasher.Write(client.pR.Y.Bytes())
+	hasher.Write(client.pY.X.Bytes())
+	hasher.Write(client.pY.Y.Bytes())
+	hasher.Write(client.pK.X.Bytes())
+	hasher.Write(client.pK.Y.Bytes())
+
+	// fmt.Println("client")
+	// fmt.Println(client.Cname)
+	// fmt.Println(client.Sname)
+	// fmt.Println(client.NC)
+	// fmt.Println(client.NS)
+	// fmt.Println(client.pX.X.Bytes())
+	// fmt.Println(client.pX.Y.Bytes())
+	// fmt.Println(client.pR.X.Bytes())
+	// fmt.Println(client.pR.Y.Bytes())
+	// fmt.Println(client.pY.X.Bytes())
+	// fmt.Println(client.pY.Y.Bytes())
+	// fmt.Println(client.pK.X.Bytes())
+	// fmt.Println(client.pK.Y.Bytes())
+	// fmt.Println()
+
 	client.preMasterSecret = hasher.Sum(nil)
 	hasher.Reset()
 	hasher.Write(client.preMasterSecret)
@@ -91,13 +110,14 @@ func (client *Client) GetAuthentKeys() {
 	client.aKey = hasher.Sum(nil)
 }
 func (client *Client) GetKDFs() {
-	hasher := md5.New()
+	hasher := sha256.New()
 	hasher.Write(client.aKey)
 	hasher.Write(client.Cname)
 	hasher.Write(client.Sname)
 	hasher.Write(client.NC)
 	hasher.Write(client.NS)
 	client.kdf1 = hasher.Sum(nil)
+	// fmt.Println("client.kdf1", client.kdf1)
 	hasher.Reset()
 	hasher.Write(client.aKey)
 	hasher.Write(client.Sname)
@@ -107,25 +127,37 @@ func (client *Client) GetKDFs() {
 	client.kdf2 = hasher.Sum(nil)
 }
 
-func (client *Client) AuthenticateKDF1(recvkdf []byte) {
-	if string(client.kdf1) == string(recvkdf) {
-		return
-	}
-	panic("kdf1 not equal")
+func (client *Client) AuthenticateKDF1(recvkdf []byte) bool {
+	return string(client.kdf1) == string(recvkdf)
 }
 
-func (client *Client) SendKDF2(recvkdf []byte) {
-	common.Send(client.kdf2)
+func (client *Client) SendKDF2() []byte {
+	return common.Send(client.kdf2)
 }
 func (client *Client) GetMaeterSecret() {
-	hasher := md5.New()
+	hasher := sha256.New()
 	hasher.Write(client.preMasterSecret)
 	hasher.Write(client.NC)
 	hasher.Write(client.NS)
 	client.masterSecret = hasher.Sum(nil)
 }
 func (client *Client) GetSessionKey() {
-	hasher := md5.New()
+	hasher := sha256.New()
+	hasher.Write(client.masterSecret)
+	hasher.Write(client.Cname)
+	hasher.Write(client.Sname)
+	hasher.Write(client.NC)
+	hasher.Write(client.NS)
+	client.sessionKey = hasher.Sum(nil)
+}
+
+func (client *Client) GetMasterSecretAndKey() {
+	hasher := sha256.New()
+	hasher.Write(client.preMasterSecret)
+	hasher.Write(client.NC)
+	hasher.Write(client.NS)
+	client.masterSecret = hasher.Sum(nil)
+	hasher.Reset()
 	hasher.Write(client.masterSecret)
 	hasher.Write(client.Cname)
 	hasher.Write(client.Sname)

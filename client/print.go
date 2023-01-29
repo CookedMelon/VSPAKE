@@ -14,3 +14,13 @@ func (client *Client) Printall() {
 	fmt.Println("client pK-", client.pK)
 	fmt.Println("client hk-", client.hkey)
 }
+func (client *Client) OutputMasterSecret() []byte {
+	x := make([]byte, 32)
+	copy(x[0:32], client.masterSecret)
+	return x
+}
+func (client *Client) OutputSessionKey() []byte {
+	x := make([]byte, 32)
+	copy(x[0:32], client.sessionKey)
+	return x
+}

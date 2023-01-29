@@ -6,3 +6,23 @@ func (server *Server) OutputK() []byte {
 	copy(k[32:64], server.pK.Y.Bytes())
 	return k
 }
+func (server *Server) OutputPreMasterSecret() []byte {
+	s := make([]byte, 32)
+	copy(s[0:32], server.preMasterSecret)
+	return s
+}
+func (server *Server) Outputakey() []byte {
+	x := make([]byte, 32)
+	copy(x[0:32], server.aKey)
+	return x
+}
+func (server *Server) OutputMasterSecret() []byte {
+	x := make([]byte, 32)
+	copy(x[0:32], server.masterSecret)
+	return x
+}
+func (server *Server) OutputSessionKey() []byte {
+	x := make([]byte, 32)
+	copy(x[0:32], server.sessionKey)
+	return x
+}

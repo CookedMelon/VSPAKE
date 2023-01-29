@@ -4,6 +4,7 @@ import (
 	"VSPAKE/common"
 	"VSPAKE/packages/elliptic"
 	"crypto/rand"
+	"crypto/sha256"
 	"fmt"
 )
 
@@ -26,6 +27,8 @@ func InitClient(hkey, sname []byte) (error, *Server) {
 	return nil, &Server{G: G, Sname: Sname, NS: NS, hkey: Hkey, pV: V}
 }
 func (server *Server) RecvHelloMessage(climsg []byte) error {
+	server.NC = make([]byte, 32)
+	server.Cname = make([]byte, 32)
 	copy(server.NC[:], climsg[0:32])
 	copy(server.Cname[:], climsg[32:])
 	return nil
@@ -66,4 +69,79 @@ func (server *Server) Update(Xbyte []byte) {
 	server.G.GetNeg(temp)
 	temp2 := server.G.Add(server.pX, temp)
 	server.pK = server.G.Mult(temp2, server.y)
+}
+func (server *Server) GetAuthentKeys() {
+	hasher := sha256.New()
+	hasher.Write(server.Cname)
+	hasher.Write(server.Sname)
+	hasher.Write(server.NC)
+	hasher.Write(server.NS)
+	hasher.Write(server.pX.X.Bytes())
+	hasher.Write(server.pX.Y.Bytes())
+	hasher.Write(server.pR.X.Bytes())
+	hasher.Write(server.pR.Y.Bytes())
+	hasher.Write(server.pY.X.Bytes())
+	hasher.Write(server.pY.Y.Bytes())
+	hasher.Write(server.pK.X.Bytes())
+	hasher.Write(server.pK.Y.Bytes())
+	// fmt.Println("server")
+	// fmt.Println(server.Cname)
+	// fmt.Println(server.Sname)
+	// fmt.Println(server.NC)
+	// fmt.Println(server.NS)
+	// fmt.Println(server.pX.X.Bytes())
+	// fmt.Println(server.pX.Y.Bytes())
+	// fmt.Println(server.pR.X.Bytes())
+	// fmt.Println(server.pR.Y.Bytes())
+	// fmt.Println(server.pY.X.Bytes())
+	// fmt.Println(server.pY.Y.Bytes())
+	// fmt.Println(server.pK.X.Bytes())
+	// fmt.Println(server.pK.Y.Bytes())
+	// fmt.Println()
+
+	server.preMasterSecret = hasher.Sum(nil)
+	hasher.Reset()
+	hasher.Write(server.preMasterSecret)
+	hasher.Write(server.NC)
+	hasher.Write(server.NS)
+	server.aKey = hasher.Sum(nil)
+}
+func (server *Server) GetKDFs() {
+	hasher := sha256.New()
+	hasher.Write(server.aKey)
+	hasher.Write(server.Cname)
+	hasher.Write(server.Sname)
+	hasher.Write(server.NC)
+	hasher.Write(server.NS)
+	server.kdf1 = hasher.Sum(nil)
+	// fmt.Println("server.kdf1", server.kdf1)
+	hasher.Reset()
+	hasher.Write(server.aKey)
+	hasher.Write(server.Sname)
+	hasher.Write(server.Cname)
+	hasher.Write(server.NS)
+	hasher.Write(server.NC)
+	server.kdf2 = hasher.Sum(nil)
+}
+func (server *Server) SendKDF1() []byte {
+	return common.Send(server.kdf1)
+}
+func (server *Server) AuthenticateKDF2(recvkdf []byte) bool {
+	return string(server.kdf2) == string(recvkdf)
+}
+
+func (server *Server) GetMasterSecretAndKey() {
+	hasher := sha256.New()
+	hasher.Write(server.preMasterSecret)
+	hasher.Write(server.NC)
+	hasher.Write(server.NS)
+	server.masterSecret = hasher.Sum(nil)
+	hasher.Reset()
+	hasher.Write(server.masterSecret)
+	hasher.Write(server.Cname)
+	hasher.Write(server.Sname)
+	hasher.Write(server.NC)
+	hasher.Write(server.NS)
+	server.sessionKey = hasher.Sum(nil)
+
 }
