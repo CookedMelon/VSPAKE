@@ -1,6 +1,7 @@
 package main
 
 import (
+	"VSPAKE/check"
 	"VSPAKE/client"
 	"VSPAKE/common"
 	"VSPAKE/server"
@@ -15,17 +16,26 @@ func hex(b []byte) string {
 	hex += "]"
 	return hex
 }
-
+func Autopolish(s string) []byte {
+	b := make([]byte, 32, 0xff)
+	copy(b, s)
+	return b
+}
 func main() {
-	common.LoadPasswd()
-	client := client.InitClient("passwd", "client_user_Alice")
-	server := server.InitClient(common.GetHashedPasswd("server_user_Bob", "client_user_Alice"), "server_user_Bob")
+	cliname := Autopolish("client_user_Alice")
+	servname := Autopolish("server_user_Bob")
+	passwd := Autopolish("password")
+	hkey := common.GetHashKey(servname, cliname, passwd)
+	_, client := client.InitClient(passwd, cliname)
+	_, server := server.InitClient(hkey, servname)
 	recvthing := client.ClientHello()
-	fmt.Printf("client hello:%#v\n", recvthing)
 	server.RecvHelloMessage(recvthing)
 	recvthing = server.ServerKeyExchange()
-	fmt.Println("server key exchange:", hex(recvthing))
-	fmt.Println(client)
 	client.Update(recvthing)
-	fmt.Println(client)
+	recvthing = client.SendClientKeyExchange()
+	server.Update(recvthing)
+	server.PrintpK()
+	client.PrintpK()
+	fmt.Println("K eqal?", check.CheckK(server, client))
+
 }

@@ -10,27 +10,31 @@ import (
 	"unsafe"
 )
 
-func InitClient(passwd, cname string) *Client {
+func InitClient(passwd, cname []byte) (error, *Client) {
+	if len(passwd) != 32 {
+		return fmt.Errorf("passwd length error"), nil
+	}
+	if len(cname) != 32 {
+		return fmt.Errorf("cname length error"), nil
+	}
 	G := new(elliptic.CurveDetail)
 	G.Init()
-	fmt.Println("G:", G)
 	nc := make([]byte, 32)
 	key := make([]byte, 32)
 	Cname := make([]byte, 32)
 	copy(key, passwd)
 	copy(Cname, cname)
 	rand.Read(nc)
-	return &Client{G: G, key: key, Cname: Cname, NC: nc}
+	return nil, &Client{G: G, key: key, Cname: Cname, NC: nc}
 }
-func (client *Client) GetClientHelloMessage() *common.ClientHelloMessage {
+func (client *Client) getclihello() *common.ClientHelloMessage {
 	hm := &common.ClientHelloMessage{}
 	copy(hm.NC[:], client.NC)
 	copy(hm.Name[:], client.Cname)
 	return hm
 }
 func (client *Client) ClientHello() []byte {
-	message := client.GetClientHelloMessage()
-	fmt.Println("client hello message", message)
+	message := client.getclihello()
 	return common.Sendc(message)
 }
 func (client *Client) RecvHelloMessage(mess []byte) {
@@ -48,20 +52,26 @@ func (client *Client) Update(sermsg []byte) error {
 	client.pY = new(elliptic.CurvePoint)
 	client.pR.X = new(big.Int).SetBytes(kec.Rbyte[:28])
 	client.pR.Y = new(big.Int).SetBytes(kec.Rbyte[32 : 32+28])
-	fmt.Println("pR.X:", client.pR.X)
-	fmt.Println("pR.Y:", client.pR.Y)
 	client.pY.X = new(big.Int).SetBytes(kec.Ybyte[:28])
-	fmt.Println("pY.X:", client.pY.X)
 	client.pY.Y = new(big.Int).SetBytes(kec.Ybyte[32 : 32+28])
-	client.hkey = common.GetHashKey(client.Cname, client.Sname, client.key)
+	client.hkey = common.GetHashKey(client.Sname, client.Cname, client.key)
 	client.x = make([]byte, 32)
 	rand.Read(client.x)
 	temp1 := client.G.Mult(client.G.P, client.x)
 	temp2 := client.G.Mult(client.pR, client.hkey)
 	client.pX = client.G.Add(temp1, temp2)
 	client.pK = client.G.Mult(client.pY, client.x)
-
 	return nil
+}
+func (client *Client) SendClientKeyExchange() []byte {
+
+	return common.SendExcCli(client.getkeyexc())
+}
+func (client *Client) getkeyexc() *common.ClientKeyExchangeMsg {
+	kec := common.ClientKeyExchangeMsg{}
+	copy(kec.Xbyte[:], client.pX.X.Bytes())
+	copy(kec.Xbyte[32:], client.pX.Y.Bytes())
+	return &kec
 }
 func (client *Client) GetAuthentKeys() {
 	hasher := md5.New()
@@ -96,6 +106,7 @@ func (client *Client) GetKDFs() {
 	hasher.Write(client.NC)
 	client.kdf2 = hasher.Sum(nil)
 }
+
 func (client *Client) AuthenticateKDF1(recvkdf []byte) {
 	if string(client.kdf1) == string(recvkdf) {
 		return

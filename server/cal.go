@@ -7,17 +7,23 @@ import (
 	"fmt"
 )
 
-func InitClient(hkey, sname string) *Server {
+func InitClient(hkey, sname []byte) (error, *Server) {
+	if len(hkey) != 32 {
+		return fmt.Errorf("hkey length error"), nil
+	}
+	if len(sname) != 32 {
+		return fmt.Errorf("sname length error"), nil
+	}
 	G := new(elliptic.CurveDetail)
 	G.Init()
-
 	NS := make([]byte, 32)
 	Sname := make([]byte, 32)
 	Hkey := make([]byte, 32)
 	copy(Sname, sname)
 	copy(Hkey, hkey)
 	rand.Read(NS)
-	return &Server{G: G, Sname: Sname, NS: NS, hkey: Hkey}
+	V := G.Mult(G.Q, Hkey)
+	return nil, &Server{G: G, Sname: Sname, NS: NS, hkey: Hkey, pV: V}
 }
 func (server *Server) RecvHelloMessage(climsg []byte) error {
 	copy(server.NC[:], climsg[0:32])
@@ -26,10 +32,10 @@ func (server *Server) RecvHelloMessage(climsg []byte) error {
 }
 
 func (server *Server) ServerKeyExchange() []byte {
-	message := server.GetServerKeyExchangeMessage()
-	return common.SendExc(message)
+	message := server.getserkeyexc()
+	return common.SendExcSer(message)
 }
-func (server *Server) GetServerKeyExchangeMessage() *common.ServerKeyExchangeMsg {
+func (server *Server) getserkeyexc() *common.ServerKeyExchangeMsg {
 	server.r = make([]byte, 32)
 	server.y = make([]byte, 32)
 	rand.Read(server.r)
@@ -38,11 +44,7 @@ func (server *Server) GetServerKeyExchangeMessage() *common.ServerKeyExchangeMsg
 	copy(mess.NS[:], server.NS)
 	copy(mess.Sname[:], server.Sname)
 	server.pR = server.GetR()
-	fmt.Println("pR.X-", server.pR.X)
-	fmt.Println("pR.Y-", server.pR.Y)
 	server.pY = server.GetY()
-	fmt.Println(server.pR.X.Bytes(), server.pR.Y.Bytes())
-	fmt.Println(server.pY.X.Bytes(), server.pY.Y.Bytes())
 	copy(mess.Rbyte[:], server.pR.X.Bytes())
 	copy(mess.Rbyte[32:], server.pR.Y.Bytes())
 	copy(mess.Ybyte[:], server.pY.X.Bytes())
@@ -54,4 +56,14 @@ func (server *Server) GetR() *elliptic.CurvePoint {
 }
 func (server *Server) GetY() *elliptic.CurvePoint {
 	return server.G.Mult(server.G.P, server.y)
+}
+func (server *Server) Update(Xbyte []byte) {
+	X := elliptic.GetEmptyCurvePoint()
+	X.X.SetBytes(Xbyte[0:28])
+	X.Y.SetBytes(Xbyte[32 : 32+28])
+	server.pX = X
+	temp := server.G.Mult(server.pV, server.r)
+	server.G.GetNeg(temp)
+	temp2 := server.G.Add(server.pX, temp)
+	server.pK = server.G.Mult(temp2, server.y)
 }

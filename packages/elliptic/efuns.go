@@ -260,3 +260,7 @@ func (curve *CurveDetail) GetRandPoint() (ans *CurvePoint) {
 	ans = curve.BaseMult(randInt)
 	return
 }
+func (curve *CurveDetail) GetNeg(cp *CurvePoint) (ans *CurvePoint) {
+	cp.Y = new(big.Int).Mod(new(big.Int).Neg(cp.Y), curve.p)
+	return
+}
