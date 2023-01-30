@@ -21,6 +21,7 @@ func Autopolish(s string) []byte {
 	copy(b, s)
 	return b
 }
+
 func main() {
 	cliname := Autopolish("client_user_Alice")
 	servname := Autopolish("server_user_Bob")
@@ -68,4 +69,14 @@ func main() {
 	fmt.Println("MasterSecret eqal?", check.CheckMasterSecret(server, client))
 	fmt.Println("SessionKey eqal?", check.CheckSessionKey(server, client))
 	//send and recv message
+	cAead, _ := client.Getgcm()
+	sAead, _ := server.Getgcm()
+
+	recvthing = client.SendText([]byte("hello"), cAead)
+	detext, _ := server.DecryptText(recvthing, sAead)
+	fmt.Println("server recv", string(detext))
+
+	recvthing = server.SendText([]byte("world"), sAead)
+	detext, _ = client.DecryptText(recvthing, cAead)
+	fmt.Println("client recv", string(detext))
 }

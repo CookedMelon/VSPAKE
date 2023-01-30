@@ -3,6 +3,8 @@ package server
 import (
 	"VSPAKE/common"
 	"VSPAKE/packages/elliptic"
+	"crypto/aes"
+	"crypto/cipher"
 	"crypto/rand"
 	"crypto/sha256"
 	"fmt"
@@ -144,4 +146,24 @@ func (server *Server) GetMasterSecretAndKey() {
 	hasher.Write(server.NS)
 	server.sessionKey = hasher.Sum(nil)
 
+}
+func (server *Server) Getgcm() (cipher.AEAD, error) {
+	block, err := aes.NewCipher(server.sessionKey)
+	if err != nil {
+		return nil, err
+	}
+	aead, err := cipher.NewGCM(block)
+	if err != nil {
+		return nil, err
+	}
+	return aead, nil
+}
+func (server *Server) SendText(plaintext []byte, aead cipher.AEAD) []byte {
+	nonce := make([]byte, 12)
+	rand.Read(nonce)
+	return append(nonce, aead.Seal(nil, nonce, plaintext, server.aKey)...)
+}
+func (server *Server) DecryptText(ciphertext []byte, aead cipher.AEAD) ([]byte, error) {
+	nonce := ciphertext[:12]
+	return aead.Open(nil, nonce, ciphertext[12:], server.aKey)
 }

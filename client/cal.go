@@ -3,11 +3,28 @@ package client
 import (
 	"VSPAKE/common"
 	"VSPAKE/packages/elliptic"
+	"crypto/aes"
+	"crypto/cipher"
 	"crypto/rand"
 	"crypto/sha256"
 	"fmt"
 	"math/big"
 )
+
+type AEAD interface {
+	// 返回提供给Seal和Open方法的随机数nonce的字节长度
+	NonceSize() int
+	// 返回原始文本和加密文本的最大长度差异
+	Overhead() int
+	// 加密并认证明文，认证附加的data，将结果添加到dst，返回更新后的切片。
+	// nonce的长度必须是NonceSize()字节，且对给定的key和时间都是独一无二的。
+	// plaintext和dst可以是同一个切片，也可以不同。
+	Seal(dst, nonce, plaintext, data []byte) []byte
+	// 解密密文并认证，认证附加的data，如果认证成功，将明文添加到dst，返回更新后的切片。
+	// nonce的长度必须是NonceSize()字节，nonce和data都必须和加密时使用的相同。
+	// ciphertext和dst可以是同一个切片，也可以不同。
+	Open(dst, nonce, ciphertext, data []byte) ([]byte, error)
+}
 
 func InitClient(passwd, cname []byte) (error, *Client) {
 	if len(passwd) != 32 {
@@ -164,4 +181,25 @@ func (client *Client) GetMasterSecretAndKey() {
 	hasher.Write(client.NC)
 	hasher.Write(client.NS)
 	client.sessionKey = hasher.Sum(nil)
+}
+
+func (client *Client) Getgcm() (cipher.AEAD, error) {
+	block, err := aes.NewCipher(client.sessionKey)
+	if err != nil {
+		return nil, err
+	}
+	aead, err := cipher.NewGCM(block)
+	if err != nil {
+		return nil, err
+	}
+	return aead, nil
+}
+func (client *Client) SendText(plaintext []byte, aead cipher.AEAD) []byte {
+	nonce := make([]byte, 12)
+	rand.Read(nonce)
+	return append(nonce, aead.Seal(nil, nonce, plaintext, client.aKey)...)
+}
+func (client *Client) DecryptText(ciphertext []byte, aead cipher.AEAD) ([]byte, error) {
+	nonce := ciphertext[:12]
+	return aead.Open(nil, nonce, ciphertext[12:], client.aKey)
 }

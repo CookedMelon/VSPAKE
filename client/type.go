@@ -15,6 +15,6 @@ type Client struct {
 	pX, pY, pR, pK                *elliptic.CurvePoint
 	sessionKey                    []byte
 	preMasterSecret, masterSecret []byte
-	aKey, sKey                    []byte
+	aKey                          []byte
 	kdf1, kdf2                    []byte
 }
