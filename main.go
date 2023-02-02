@@ -17,7 +17,11 @@ func hex(b []byte) string {
 	return hex
 }
 func Autopolish(s string) []byte {
-	b := make([]byte, 32, 0xff)
+	b := make([]byte, 32)
+	for i := 0; i < len(b); i++ {
+		b[i] = 0xff
+	}
+	// fmt.Println("b", b)
 	copy(b, s)
 	return b
 }
@@ -30,10 +34,13 @@ func main() {
 	_, client := client.InitClient(passwd, cliname)
 	_, server := server.InitClient(hkey, servname)
 	recvthing := client.ClientHello()
+	fmt.Println("client hello", hex(recvthing))
 	server.RecvHelloMessage(recvthing)
 	recvthing = server.ServerKeyExchange()
+	fmt.Println("server key exchange", hex(recvthing))
 	client.Update(recvthing)
 	recvthing = client.SendClientKeyExchange()
+	fmt.Println("client key exchange", hex(recvthing))
 	server.Update(recvthing)
 	server.PrintpK()
 	client.PrintpK()
