@@ -1,6 +1,9 @@
 package main
 
-import "sync"
+import (
+	"fmt"
+	"sync"
+)
 
 type ConnectPool struct {
 	mu sync.Mutex
@@ -11,8 +14,27 @@ type connection struct {
 	Akey       []byte
 }
 
-func (cp *ConnectPool) Get(key []byte) (*connection, error) {
+func (cp *ConnectPool) Get(socket string) (*connection, error) {
 	cp.mu.Lock()
 	defer cp.mu.Unlock()
-	return cp.m[string(key)], nil
+	connBytes, ok := cp.m[socket]
+	if !ok {
+		return nil, fmt.Errorf("not found")
+	}
+	return connBytes, nil
+}
+func (cp *ConnectPool) Set(socket string, conn *connection) {
+	cp.mu.Lock()
+	defer cp.mu.Unlock()
+	cp.m[socket] = conn
+}
+func (cp *ConnectPool) Delete(socket string) {
+	cp.mu.Lock()
+	defer cp.mu.Unlock()
+	delete(cp.m, socket)
+}
+func CtearConnectPool() *ConnectPool {
+	return &ConnectPool{
+		m: make(map[string]*connection),
+	}
 }
