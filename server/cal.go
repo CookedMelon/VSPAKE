@@ -50,10 +50,14 @@ func (server *Server) getserkeyexc() *common.ServerKeyExchangeMsg {
 	copy(mess.Sname[:], server.Sname)
 	server.pR = server.GetR()
 	server.pY = server.GetY()
-	copy(mess.Rbyte[:], server.pR.X.Bytes())
-	copy(mess.Rbyte[32:], server.pR.Y.Bytes())
-	copy(mess.Ybyte[:], server.pY.X.Bytes())
-	copy(mess.Ybyte[32:], server.pY.Y.Bytes())
+	common.CopyPoingByte(mess.Rbyte[:], server.pR.X.Bytes())
+	common.CopyPoingByte(mess.Rbyte[32:], server.pR.Y.Bytes())
+	common.CopyPoingByte(mess.Ybyte[:], server.pY.X.Bytes())
+	common.CopyPoingByte(mess.Ybyte[32:], server.pY.Y.Bytes())
+	// copy(mess.Rbyte[:], server.pR.X.Bytes())
+	// copy(mess.Rbyte[32:], server.pR.Y.Bytes())
+	// copy(mess.Ybyte[:], server.pY.X.Bytes())
+	// copy(mess.Ybyte[32:], server.pY.Y.Bytes())
 	return mess
 }
 func (server *Server) GetR() *elliptic.CurvePoint {
@@ -166,4 +170,23 @@ func (server *Server) SendText(plaintext []byte, aead cipher.AEAD) []byte {
 func (server *Server) DecryptText(ciphertext []byte, aead cipher.AEAD) ([]byte, error) {
 	nonce := ciphertext[:12]
 	return aead.Open(nil, nonce, ciphertext[12:], server.aKey)
+}
+
+func (server *Server) Checkzero() bool {
+	for _, v := range server.sessionKey {
+		if v == 0 {
+			return false
+		}
+	}
+	for _, v := range server.aKey {
+		if v == 0 {
+			return false
+		}
+	}
+	for _, v := range server.skey {
+		if v == 0 {
+			return false
+		}
+	}
+	return true
 }

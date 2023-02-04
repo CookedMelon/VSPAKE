@@ -41,3 +41,6 @@ func Sendc(msg *ClientHelloMessage) []byte {
 	copy(ret[32:64], msg.Name[:])
 	return ret[:]
 }
+func CopyPoingByte(dst, src []byte) {
+	copy(dst[28-len(src):], src)
+}

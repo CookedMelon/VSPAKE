@@ -85,8 +85,10 @@ func (client *Client) SendClientKeyExchange() []byte {
 }
 func (client *Client) getkeyexc() *common.ClientKeyExchangeMsg {
 	kec := common.ClientKeyExchangeMsg{}
-	copy(kec.Xbyte[:], client.pX.X.Bytes())
-	copy(kec.Xbyte[32:], client.pX.Y.Bytes())
+	common.CopyPoingByte(kec.Xbyte[:], client.pX.X.Bytes())
+	common.CopyPoingByte(kec.Xbyte[32:], client.pX.Y.Bytes())
+	// copy(kec.Xbyte[:], client.pX.X.Bytes())
+	// copy(kec.Xbyte[32:], client.pX.Y.Bytes())
 	return &kec
 }
 func (client *Client) GetAuthentKeys() {
@@ -202,4 +204,18 @@ func (client *Client) SendText(plaintext []byte, aead cipher.AEAD) []byte {
 func (client *Client) DecryptText(ciphertext []byte, aead cipher.AEAD) ([]byte, error) {
 	nonce := ciphertext[:12]
 	return aead.Open(nil, nonce, ciphertext[12:], client.aKey)
+}
+func (client *Client) Checkzero() bool {
+	for _, v := range client.sessionKey {
+		if v == 0 {
+			return false
+		}
+	}
+	for _, v := range client.aKey {
+		if v == 0 {
+			return false
+		}
+	}
+
+	return true
 }

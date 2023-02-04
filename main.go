@@ -27,6 +27,8 @@ func Autopolish(s string) []byte {
 }
 
 func main() {
+	// for ii := 0; ii < 100; ii++ {
+	fmt.Println("-----------------------")
 	cliname := Autopolish("client_user_Alice")
 	servname := Autopolish("server_user_Bob")
 	passwd := Autopolish("password")
@@ -34,17 +36,22 @@ func main() {
 	_, client := client.InitClient(passwd, cliname)
 	_, server := server.InitClient(hkey, servname)
 	recvthing := client.ClientHello()
-	fmt.Println("client hello", hex(recvthing))
+	// fmt.Println("client hello", hex(recvthing))
 	server.RecvHelloMessage(recvthing)
 	recvthing = server.ServerKeyExchange()
-	fmt.Println("server key exchange", hex(recvthing))
+	// fmt.Println("server key exchange", hex(recvthing))
 	client.Update(recvthing)
 	recvthing = client.SendClientKeyExchange()
-	fmt.Println("client key exchange", hex(recvthing))
+	// fmt.Println("client key exchange", hex(recvthing))
 	server.Update(recvthing)
-	server.PrintpK()
-	client.PrintpK()
-	fmt.Println("K eqal?", check.CheckK(server, client))
+	// server.PrintpK()
+	// client.PrintpK()
+	keq := check.CheckK(server, client)
+	if !keq {
+		server.Printall()
+		client.Printall()
+		return
+	}
 	client.GetAuthentKeys()
 	server.GetAuthentKeys()
 	fmt.Println("PreMasterSecret eqal?", check.CheckPreMasterSecret(server, client))
@@ -59,7 +66,7 @@ func main() {
 		fmt.Println("KDF1 pass")
 	} else {
 		fmt.Println("KDF1 fail")
-		return
+		// return
 	}
 	recvthing = client.SendKDF2()
 	ans = server.AuthenticateKDF2(recvthing)
@@ -67,7 +74,7 @@ func main() {
 		fmt.Println("KDF2 pass")
 	} else {
 		fmt.Println("KDF2 fail")
-		return
+		// return
 	}
 
 	//Compute master secret and session key
@@ -75,6 +82,17 @@ func main() {
 	server.GetMasterSecretAndKey()
 	fmt.Println("MasterSecret eqal?", check.CheckMasterSecret(server, client))
 	fmt.Println("SessionKey eqal?", check.CheckSessionKey(server, client))
+
+	cz := client.Checkzero()
+	if !cz {
+		fmt.Println("client check zero fail")
+		// return
+	}
+	cz = server.Checkzero()
+	if !cz {
+		fmt.Println("client check zero fail")
+		// return
+	}
 	//send and recv message
 	cAead, _ := client.Getgcm()
 	sAead, _ := server.Getgcm()
@@ -86,4 +104,5 @@ func main() {
 	recvthing = server.SendText([]byte("world"), sAead)
 	detext, _ = client.DecryptText(recvthing, cAead)
 	fmt.Println("client recv", string(detext))
+	// }
 }
