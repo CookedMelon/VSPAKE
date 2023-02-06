@@ -17,6 +17,7 @@ type ServerHelloMessage struct {
 func Send(b []byte) []byte {
 	return b
 }
+
 func SendExcSer(msg *ServerKeyExchangeMsg) []byte {
 	ret := make([]byte, 32*2+64*2)
 	copy(ret[0:32], msg.NS[:])
