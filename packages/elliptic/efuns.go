@@ -7,10 +7,10 @@ import (
 )
 
 type JacobianPoint struct {
-	X, Y, Z *big.Int
+	X, Y, Z *big.Int // Jacobian coordinates of a point on an elliptic curve
 }
 type CurvePoint struct {
-	X, Y *big.Int
+	X, Y *big.Int // Affine coordinates of a point on an elliptic curve
 }
 type CurveDetail struct {
 	p         *big.Int    // the order of the underlying field
@@ -19,7 +19,7 @@ type CurveDetail struct {
 	BasePoint CurvePoint  // (x,y) of the base point
 	BitSize   int         // the size of the underlying field
 	Name      string      // the canonical name of the curve
-	P, Q      *CurvePoint //P,Q为椭圆曲线上的点
+	P, Q      *CurvePoint // points on the elliptic curve
 }
 
 // type cd interface {
@@ -33,6 +33,8 @@ type CurveDetail struct {
 //	}
 //
 // get x^3 - 3x + b
+
+// This function computes the value of the polynomial of degree three defined by the CurveDetail struct at the given point x. The coefficients of the polynomial are stored in the struct. The function returns a pointer to a big.Int value representing the result of the computation.
 func (curve *CurveDetail) polynomial(x *big.Int) *big.Int {
 	xxx := new(big.Int).Mul(x, x)
 	xxx.Mul(xxx, x)
@@ -45,6 +47,8 @@ func (curve *CurveDetail) polynomial(x *big.Int) *big.Int {
 
 	return ans
 }
+
+// This function checks whether the given point cp lies on the elliptic curve defined by the CurveDetail struct. The function returns a boolean value indicating whether the point is on the curve.
 func (curve *CurveDetail) IfOnCurve(cp *CurvePoint) bool {
 	if cp.X.Sign() < 0 || cp.X.Cmp(curve.p) >= 0 ||
 		cp.Y.Sign() < 0 || cp.Y.Cmp(curve.p) >= 0 {
@@ -58,6 +62,7 @@ func (curve *CurveDetail) IfOnCurve(cp *CurvePoint) bool {
 	return yy.Cmp(curve.polynomial(cp.X)) == 0
 }
 
+// This function computes the z-coordinate of the given point cp on the elliptic curve. The function returns a pointer to a big.Int value representing the z-coordinate.
 func getZ(cp *CurvePoint) (z *big.Int) {
 	z = new(big.Int)
 	if cp.X.Sign() != 0 || cp.Y.Sign() != 0 {
@@ -66,6 +71,8 @@ func getZ(cp *CurvePoint) (z *big.Int) {
 	}
 	return z
 }
+
+// This function converts a point in Jacobian coordinates to affine coordinates on the elliptic curve defined by the CurveDetail struct. The function takes a pointer to a JacobianPoint struct and returns a pointer to a CurvePoint struct.
 func (curve *CurveDetail) Jacobian2Curve(jp *JacobianPoint) (cp *CurvePoint) {
 	cp = new(CurvePoint)
 	// 无穷远点返回为（0,0）
@@ -83,7 +90,7 @@ func (curve *CurveDetail) Jacobian2Curve(jp *JacobianPoint) (cp *CurvePoint) {
 	return
 }
 
-// 求Jacobian加重射影坐标
+// This function performs point addition in Jacobian coordinates on the elliptic curve defined by the CurveDetail struct. The function takes two pointers to JacobianPoint structs representing the points to be added and returns a pointer to a JacobianPoint struct representing the sum.
 func (curve *CurveDetail) JacobianAdd(jp1, jp2 *JacobianPoint) (ans *JacobianPoint) {
 	ans = new(JacobianPoint)
 	if jp1.Z.Sign() == 0 {
@@ -158,6 +165,8 @@ func (curve *CurveDetail) JacobianAdd(jp1, jp2 *JacobianPoint) (ans *JacobianPoi
 	ans.Z.Mod(ans.Z, curve.p)
 	return
 }
+
+// This function performs point doubling in Jacobian coordinates on the elliptic curve defined by the CurveDetail struct. The function takes a pointer to a JacobianPoint struct representing the point to be doubled and returns a pointer to a JacobianPoint struct representing the doubled point.
 func (curve *CurveDetail) JacobianDouble(jp *JacobianPoint) (ans *JacobianPoint) {
 	ans = new(JacobianPoint)
 	zz := new(big.Int).Mul(jp.Z, jp.Z)
@@ -202,6 +211,7 @@ func (curve *CurveDetail) JacobianDouble(jp *JacobianPoint) (ans *JacobianPoint)
 	return
 }
 
+// This function performs point addition in affine coordinates on the elliptic curve defined by the CurveDetail struct. The function takes two pointers to CurvePoint structs representing the points to be added and returns a pointer to a CurvePoint struct representing the sum.
 func (curve *CurveDetail) Add(cp1, cp2 *CurvePoint) (ans *CurvePoint) {
 	z1 := getZ(cp1)
 	z2 := getZ(cp2)
@@ -217,6 +227,7 @@ func (curve *CurveDetail) Add(cp1, cp2 *CurvePoint) (ans *CurvePoint) {
 	return
 }
 
+// This function performs point doubling in affine coordinates on the elliptic curve defined by the CurveDetail struct. The function takes a pointer to a CurvePoint struct representing the point to be doubled and returns a pointer to a CurvePoint struct representing the doubled point.
 func (curve *CurveDetail) Double(cp *CurvePoint) (ans *CurvePoint) {
 	z := getZ(cp)
 	jp := new(JacobianPoint)
@@ -227,6 +238,7 @@ func (curve *CurveDetail) Double(cp *CurvePoint) (ans *CurvePoint) {
 	return
 }
 
+// This function performs scalar multiplication of a point in affine coordinates on the elliptic curve defined by the CurveDetail struct. The function takes a pointer to a CurvePoint struct representing the point to be multiplied and a byte array k representing the scalar. The function returns a pointer to a CurvePoint struct representing the product.
 func (curve *CurveDetail) Mult(cp *CurvePoint, k []byte) (ans *CurvePoint) {
 	B := new(JacobianPoint)
 	B.X = cp.X
@@ -247,6 +259,8 @@ func (curve *CurveDetail) Mult(cp *CurvePoint, k []byte) (ans *CurvePoint) {
 	}
 	return curve.Jacobian2Curve(nB)
 }
+
+// This function performs scalar multiplication of the base point on the elliptic curve defined by the CurveDetail struct. The function takes a byte array k representing the scalar. The function returns a pointer to a CurvePoint struct representing the product.
 func (curve *CurveDetail) BaseMult(k []byte) (ans *CurvePoint) {
 	GP := new(CurvePoint)
 	GP.X = curve.BasePoint.X
@@ -254,12 +268,15 @@ func (curve *CurveDetail) BaseMult(k []byte) (ans *CurvePoint) {
 	return curve.Mult(GP, k)
 }
 
+// This function generates a random point on the elliptic curve defined by the Curve
 func (curve *CurveDetail) GetRandPoint() (ans *CurvePoint) {
 	randInt := make([]byte, 32)
 	rand.Read(randInt)
 	ans = curve.BaseMult(randInt)
 	return
 }
+
+// This function return the negative of a point on the elliptic curve defined by the Curve
 func (curve *CurveDetail) GetNeg(cp *CurvePoint) (ans *CurvePoint) {
 	cp.Y = new(big.Int).Mod(new(big.Int).Neg(cp.Y), curve.p)
 	return
