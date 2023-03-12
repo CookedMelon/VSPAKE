@@ -35,6 +35,7 @@ type CurveDetail struct {
 // get x^3 - 3x + b
 
 // This function computes the value of the polynomial of degree three defined by the CurveDetail struct at the given point x. The coefficients of the polynomial are stored in the struct. The function returns a pointer to a big.Int value representing the result of the computation.
+// 计算多项式x^3 - 3x + b的值
 func (curve *CurveDetail) polynomial(x *big.Int) *big.Int {
 	xxx := new(big.Int).Mul(x, x)
 	xxx.Mul(xxx, x)
@@ -49,6 +50,7 @@ func (curve *CurveDetail) polynomial(x *big.Int) *big.Int {
 }
 
 // This function checks whether the given point cp lies on the elliptic curve defined by the CurveDetail struct. The function returns a boolean value indicating whether the point is on the curve.
+// 检查给定点cp是否位于CurveDetail结构体定义的椭圆曲线上
 func (curve *CurveDetail) IfOnCurve(cp *CurvePoint) bool {
 	if cp.X.Sign() < 0 || cp.X.Cmp(curve.p) >= 0 ||
 		cp.Y.Sign() < 0 || cp.Y.Cmp(curve.p) >= 0 {
@@ -73,6 +75,7 @@ func getZ(cp *CurvePoint) (z *big.Int) {
 }
 
 // This function converts a point in Jacobian coordinates to affine coordinates on the elliptic curve defined by the CurveDetail struct. The function takes a pointer to a JacobianPoint struct and returns a pointer to a CurvePoint struct.
+// 将雅可比坐标中的一个点转换为CurveDetail结构定义的椭圆曲线上的仿射坐标。
 func (curve *CurveDetail) Jacobian2Curve(jp *JacobianPoint) (cp *CurvePoint) {
 	cp = new(CurvePoint)
 	// 无穷远点返回为（0,0）
@@ -91,6 +94,7 @@ func (curve *CurveDetail) Jacobian2Curve(jp *JacobianPoint) (cp *CurvePoint) {
 }
 
 // This function performs point addition in Jacobian coordinates on the elliptic curve defined by the CurveDetail struct. The function takes two pointers to JacobianPoint structs representing the points to be added and returns a pointer to a JacobianPoint struct representing the sum.
+// 执行雅可比坐标中的点加法。
 func (curve *CurveDetail) JacobianAdd(jp1, jp2 *JacobianPoint) (ans *JacobianPoint) {
 	ans = new(JacobianPoint)
 	if jp1.Z.Sign() == 0 {
@@ -167,6 +171,7 @@ func (curve *CurveDetail) JacobianAdd(jp1, jp2 *JacobianPoint) (ans *JacobianPoi
 }
 
 // This function performs point doubling in Jacobian coordinates on the elliptic curve defined by the CurveDetail struct. The function takes a pointer to a JacobianPoint struct representing the point to be doubled and returns a pointer to a JacobianPoint struct representing the doubled point.
+// 执行雅可比坐标中的点加倍
 func (curve *CurveDetail) JacobianDouble(jp *JacobianPoint) (ans *JacobianPoint) {
 	ans = new(JacobianPoint)
 	zz := new(big.Int).Mul(jp.Z, jp.Z)
@@ -212,6 +217,7 @@ func (curve *CurveDetail) JacobianDouble(jp *JacobianPoint) (ans *JacobianPoint)
 }
 
 // This function performs point addition in affine coordinates on the elliptic curve defined by the CurveDetail struct. The function takes two pointers to CurvePoint structs representing the points to be added and returns a pointer to a CurvePoint struct representing the sum.
+// 执行仿射坐标上的点加法
 func (curve *CurveDetail) Add(cp1, cp2 *CurvePoint) (ans *CurvePoint) {
 	z1 := getZ(cp1)
 	z2 := getZ(cp2)
@@ -228,6 +234,7 @@ func (curve *CurveDetail) Add(cp1, cp2 *CurvePoint) (ans *CurvePoint) {
 }
 
 // This function performs point doubling in affine coordinates on the elliptic curve defined by the CurveDetail struct. The function takes a pointer to a CurvePoint struct representing the point to be doubled and returns a pointer to a CurvePoint struct representing the doubled point.
+// 执行仿射坐标上的点加倍
 func (curve *CurveDetail) Double(cp *CurvePoint) (ans *CurvePoint) {
 	z := getZ(cp)
 	jp := new(JacobianPoint)
@@ -239,6 +246,7 @@ func (curve *CurveDetail) Double(cp *CurvePoint) (ans *CurvePoint) {
 }
 
 // This function performs scalar multiplication of a point in affine coordinates on the elliptic curve defined by the CurveDetail struct. The function takes a pointer to a CurvePoint struct representing the point to be multiplied and a byte array k representing the scalar. The function returns a pointer to a CurvePoint struct representing the product.
+// 执行仿射坐标中的点标量乘法
 func (curve *CurveDetail) Mult(cp *CurvePoint, k []byte) (ans *CurvePoint) {
 	B := new(JacobianPoint)
 	B.X = cp.X
@@ -261,6 +269,7 @@ func (curve *CurveDetail) Mult(cp *CurvePoint, k []byte) (ans *CurvePoint) {
 }
 
 // This function performs scalar multiplication of the base point on the elliptic curve defined by the CurveDetail struct. The function takes a byte array k representing the scalar. The function returns a pointer to a CurvePoint struct representing the product.
+// 执行基点的标量乘法
 func (curve *CurveDetail) BaseMult(k []byte) (ans *CurvePoint) {
 	GP := new(CurvePoint)
 	GP.X = curve.BasePoint.X
@@ -269,6 +278,7 @@ func (curve *CurveDetail) BaseMult(k []byte) (ans *CurvePoint) {
 }
 
 // This function generates a random point on the elliptic curve defined by the Curve
+// 生成椭圆上的随机点
 func (curve *CurveDetail) GetRandPoint() (ans *CurvePoint) {
 	randInt := make([]byte, 32)
 	rand.Read(randInt)
@@ -277,6 +287,7 @@ func (curve *CurveDetail) GetRandPoint() (ans *CurvePoint) {
 }
 
 // This function return the negative of a point on the elliptic curve defined by the Curve
+// 返回椭圆上的点的负数
 func (curve *CurveDetail) GetNeg(cp *CurvePoint) (ans *CurvePoint) {
 	cp.Y = new(big.Int).Mod(new(big.Int).Neg(cp.Y), curve.p)
 	return
